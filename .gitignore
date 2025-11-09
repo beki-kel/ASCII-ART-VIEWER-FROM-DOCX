@@ -77,3 +77,4 @@ test_doc.html
 final_result.html
 *.txt
 !requirements.txt
+.vercel

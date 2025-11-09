@@ -11,17 +11,19 @@ from fastapi.responses import JSONResponse
 import json
 from typing import Dict, List
 import asyncio
+import os
 
 from app.models.schemas import ProcessingRequest, ProcessingResponse, WebSocketMessage
 from app.services.processor import ProcessorService
+from app.config import settings
 
 # Initialize FastAPI app
 app = FastAPI(
     title="ASCII Art Viewer - Competition Edition",
     description="Professional ASCII Art Extraction Web Application",
     version="3.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc"
+    docs_url="/docs" if not settings.is_production else None,
+    redoc_url="/redoc" if not settings.is_production else None
 )
 
 # Mount static files and templates
@@ -55,6 +57,16 @@ class ConnectionManager:
                 self.disconnect(session_id)
 
 manager = ConnectionManager()
+
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for deployment platforms"""
+    return {
+        "status": "healthy",
+        "environment": settings.environment,
+        "version": "3.0.0"
+    }
 
 
 @app.get("/")
@@ -136,8 +148,8 @@ if __name__ == "__main__":
     import uvicorn
     uvicorn.run(
         "main:app", 
-        host="0.0.0.0", 
-        port=8000, 
-        reload=True,
-        log_level="info"
+        host=settings.host, 
+        port=settings.port, 
+        reload=settings.debug,
+        log_level=settings.log_level
     )
