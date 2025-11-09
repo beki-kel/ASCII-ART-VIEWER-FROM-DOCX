@@ -79,9 +79,12 @@ async def home(request: Request):
 async def process_ascii_art(request: ProcessingRequest):
     """Start processing ASCII art from URL"""
     try:
+        print(f"Starting processing for URL: {request.url}")
         session_id = await processor_service.process_request(request)
+        print(f"Created session: {session_id}")
         return {"session_id": session_id, "status": "processing_started"}
     except Exception as e:
+        print(f"Processing error: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
 
 
@@ -107,17 +110,28 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
     """WebSocket endpoint for real-time updates"""
     await manager.connect(websocket, session_id)
     
-    # Register callback for this session
-    def send_update(message: WebSocketMessage):
-        asyncio.create_task(manager.send_message(session_id, message))
+    # Register callback for this session with proper error handling
+    async def send_update(message: WebSocketMessage):
+        try:
+            await manager.send_message(session_id, message)
+        except Exception as e:
+            print(f"WebSocket send error for session {session_id}: {e}")
+            manager.disconnect(session_id)
     
     processor_service.register_callback(session_id, send_update)
     
     try:
         while True:
-            # Keep connection alive
-            await websocket.receive_text()
+            # Keep connection alive and handle ping/pong
+            try:
+                await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
+            except asyncio.TimeoutError:
+                # Send ping to keep connection alive
+                await websocket.send_text('{"type":"ping"}')
     except WebSocketDisconnect:
+        manager.disconnect(session_id)
+    except Exception as e:
+        print(f"WebSocket error for session {session_id}: {e}")
         manager.disconnect(session_id)
 
 

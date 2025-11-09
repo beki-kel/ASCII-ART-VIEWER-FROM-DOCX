@@ -8,6 +8,7 @@ class ASCIIArtViewer {
         this.websocket = null;
         this.currentSessionId = null;
         this.isProcessing = false;
+        this.pollingInterval = null;
         
         this.initializeElements();
         this.attachEventListeners();
@@ -131,16 +132,64 @@ class ASCIIArtViewer {
         
         this.websocket.onmessage = (event) => {
             const message = JSON.parse(event.data);
-            this.handleWebSocketMessage(message);
+            // Ignore ping messages
+            if (message.type !== 'ping') {
+                this.handleWebSocketMessage(message);
+            }
         };
         
         this.websocket.onclose = () => {
-            this.logToTerminal('WebSocket connection closed', 'warning');
+            this.logToTerminal('WebSocket connection closed - switching to polling', 'warning');
+            this.startPolling();
         };
         
         this.websocket.onerror = (error) => {
-            this.logToTerminal('WebSocket error occurred', 'error');
+            this.logToTerminal('WebSocket error - switching to polling', 'error');
+            this.startPolling();
         };
+    }
+    
+    startPolling() {
+        if (!this.currentSessionId || !this.isProcessing) return;
+        
+        this.pollingInterval = setInterval(async () => {
+            try {
+                const response = await fetch(`/api/session/${this.currentSessionId}`);
+                const sessionData = await response.json();
+                
+                // Check if processing is complete
+                if (sessionData.status === 'completed') {
+                    this.displayResults(sessionData.ascii_art, sessionData.metadata);
+                    this.logToTerminal('Processing completed successfully!', 'success');
+                    this.stopProcessing();
+                } else if (sessionData.status === 'failed') {
+                    this.logToTerminal(`Processing failed: ${sessionData.error_message}`, 'error');
+                    this.stopProcessing();
+                } else {
+                    // Update progress based on steps
+                    const latestStep = sessionData.steps[sessionData.steps.length - 1];
+                    if (latestStep) {
+                        this.logToTerminal(latestStep.message, 'info');
+                        this.updateProgressFromStatus(latestStep.status, latestStep.message);
+                    }
+                }
+            } catch (error) {
+                this.logToTerminal(`Polling error: ${error.message}`, 'error');
+            }
+        }, 2000); // Poll every 2 seconds
+    }
+    
+    updateProgressFromStatus(status, message) {
+        const progressSteps = {
+            'fetching': 20,
+            'parsing': 40,
+            'extracting': 60,
+            'enhancing': 80,
+            'completed': 100
+        };
+        
+        const progress = progressSteps[status] || 0;
+        this.updateProgress(progress, message);
     }
     
     handleWebSocketMessage(message) {
@@ -300,6 +349,11 @@ class ASCIIArtViewer {
         if (this.websocket) {
             this.websocket.close();
             this.websocket = null;
+        }
+        
+        if (this.pollingInterval) {
+            clearInterval(this.pollingInterval);
+            this.pollingInterval = null;
         }
     }
     

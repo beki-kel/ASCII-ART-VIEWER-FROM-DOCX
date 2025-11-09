@@ -38,8 +38,13 @@ class ProcessorService:
         if session_id in self.session_callbacks:
             for callback in self.session_callbacks[session_id]:
                 try:
-                    callback(message)
-                except Exception:
+                    # Handle both sync and async callbacks
+                    if asyncio.iscoroutinefunction(callback):
+                        asyncio.create_task(callback(message))
+                    else:
+                        callback(message)
+                except Exception as e:
+                    print(f"Callback error for session {session_id}: {e}")
                     pass  # Ignore callback errors
     
     async def process_request(self, request: ProcessingRequest) -> str:
@@ -125,6 +130,7 @@ class ProcessorService:
             timestamp=datetime.now()
         )
         
+        print(f"Updating status for session {session_id}: {status.value} - {message}")
         self._notify_callbacks(session_id, ws_message)
     
     async def _fetch_document(self, url: str) -> str:
