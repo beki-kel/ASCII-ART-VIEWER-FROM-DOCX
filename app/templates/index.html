@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASCII Art Viewer - Competition Edition</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="/static/style.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <h1 class="logo">
+                    <i class="fas fa-palette"></i>
+                    ASCII Art Viewer
+                </h1>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+        <div class="container">
+            <!-- Control Panel -->
+            <section class="control-panel">
+                <div class="panel-header">
+                    <h2><i class="fas fa-cogs"></i> Processing Control</h2>
+                </div>
+                
+                <form id="processForm" class="process-form">
+                    <div class="form-group">
+                        <label for="urlInput">
+                            <i class="fas fa-link"></i>
+                            Google Docs URL
+                        </label>
+                        <div class="url-input-group">
+                            <input type="url" id="urlInput" placeholder="https://docs.google.com/document/d/e/2PACX.../pub" required>
+                            <button type="button" class="btn-test-url" id="testUrlBtn">
+                                <i class="fas fa-flask"></i> Use Test URL
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="themeMode">
+                                <i class="fas fa-moon"></i>
+                                UI Theme
+                            </label>
+                            <div class="custom-select">
+                                <select id="themeMode">
+                                    <option value="dark">🌙 Dark Mode</option>
+                                    <option value="cyberpunk">⚡ Cyberpunk</option>
+                                    <option value="matrix">● Matrix</option>
+                                    <option value="classic">💻 Classic</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="colorMode">
+                                <i class="fas fa-palette"></i>
+                                Color Mode
+                            </label>
+                            <div class="custom-select">
+                                <select id="colorMode">
+                                    <option value="auto">◆ Auto Detect</option>
+                                    <option value="rainbow">🌈 Rainbow</option>
+                                    <option value="highlight">★ Highlight</option>
+                                    <option value="gradient">▲ Gradient</option>
+                                    <option value="matrix">● Matrix</option>
+                                    <option value="cyberpunk">⚡ Cyberpunk</option>
+                                    <option value="classic">■ Classic</option>
+                                    <option value="none">○ None</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="outputFormat">
+                                <i class="fas fa-file-export"></i>
+                                Output Format
+                            </label>
+                            <div class="custom-select">
+                                <select id="outputFormat">
+                                    <option value="txt">📄 Text File (.txt)</option>
+                                    <option value="json">{ } JSON Data (.json)</option>
+                                    <option value="html">⟨/⟩ HTML Page (.html)</option>
+                                    <option value="svg">⬡ SVG Vector (.svg)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    
+                    <button type="submit" class="btn-process" id="processBtn">
+                        <i class="fas fa-play"></i>
+                        Extract ASCII Art
+                    </button>
+                </form>
+            </section>
+
+            <!-- Processing Terminal -->
+            <section class="terminal-section">
+                <div class="terminal-header">
+                    <h3><i class="fas fa-terminal"></i> Processing Terminal</h3>
+                    <div class="terminal-controls">
+                        <button class="terminal-btn" id="clearTerminal">
+                            <i class="fas fa-trash"></i> Clear
+                        </button>
+                    </div>
+                </div>
+                <div class="terminal" id="terminal">
+                    <div class="terminal-line">
+                        <span class="prompt">$</span>
+                        <span class="text">ASCII Art Viewer v3.0 - Ready for processing</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Progress Bar -->
+            <section class="progress-section" id="progressSection" style="display: none;">
+                <div class="progress-container">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div class="progress-text" id="progressText">Initializing...</div>
+                </div>
+            </section>
+
+            <!-- Results Display -->
+            <section class="results-section" id="resultsSection" style="display: none;">
+                <div class="results-header">
+                    <h3><i class="fas fa-image"></i> ASCII Art Result</h3>
+                    <div class="results-controls">
+                        <button class="btn-secondary" id="downloadBtn">
+                            <i class="fas fa-download"></i> Download
+                        </button>
+                        <button class="btn-secondary" id="copyBtn">
+                            <i class="fas fa-copy"></i> Copy
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Metadata Panel -->
+                <div class="metadata-panel" id="metadataPanel">
+                    <div class="metadata-grid">
+                        <div class="metadata-item">
+                            <span class="metadata-label">Method:</span>
+                            <span class="metadata-value" id="methodValue">-</span>
+                        </div>
+                        <div class="metadata-item">
+                            <span class="metadata-label">Dimensions:</span>
+                            <span class="metadata-value" id="dimensionsValue">-</span>
+                        </div>
+                        <div class="metadata-item">
+                            <span class="metadata-label">Characters:</span>
+                            <span class="metadata-value" id="charactersValue">-</span>
+                        </div>
+                        <div class="metadata-item">
+                            <span class="metadata-label">Processing Time:</span>
+                            <span class="metadata-value" id="timeValue">-</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- ASCII Art Display -->
+                <div class="ascii-display" id="asciiDisplay">
+                    <pre id="asciiContent"></pre>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 ASCII Art Viewer - Competition Edition | Professional Grade Extraction Tool</p>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="/static/app.js"></script>
+</body>
+</html>

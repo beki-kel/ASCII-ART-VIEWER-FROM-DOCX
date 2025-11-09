@@ -1,0 +1,18 @@
+# Core dependencies
+requests>=2.25.0
+
+# Web framework
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+
+# Data validation and parsing
+pydantic>=2.0.0
+
+# Template engine
+jinja2>=3.1.0
+
+# File handling
+python-multipart>=0.0.6
+
+# Development tools (optional)
+python-dotenv>=1.0.0
