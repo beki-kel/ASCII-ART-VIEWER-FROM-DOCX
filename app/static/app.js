@@ -9,6 +9,9 @@ class ASCIIArtViewer {
         this.currentSessionId = null;
         this.isProcessing = false;
         this.pollingInterval = null;
+        this.backupPollingInterval = null;
+        this.wsTimeout = null;
+        this.lastReportedStep = null;
         
         this.initializeElements();
         this.attachEventListeners();
@@ -110,6 +113,13 @@ class ASCIIArtViewer {
             this.logToTerminal(`Session created: ${this.currentSessionId}`, 'success');
             this.connectWebSocket();
             
+            // Also start gentle polling as backup
+            setTimeout(() => {
+                if (this.isProcessing) {
+                    this.startBackupPolling();
+                }
+            }, 5000); // Start backup polling after 5 seconds
+            
         } catch (error) {
             this.logToTerminal(`Error starting processing: ${error.message}`, 'error');
             this.stopProcessing();
@@ -128,10 +138,27 @@ class ASCIIArtViewer {
         
         this.websocket.onopen = () => {
             this.logToTerminal('WebSocket connected - receiving live updates', 'success');
+            // Send a heartbeat to confirm connection
+            this.websocket.send(JSON.stringify({type: 'client_ready', session_id: this.currentSessionId}));
+            
+            // Set a timeout to fallback to polling if no messages received
+            this.wsTimeout = setTimeout(() => {
+                if (this.isProcessing) {
+                    this.logToTerminal('No WebSocket updates received, switching to polling', 'warning');
+                    this.websocket.close();
+                    this.startPolling();
+                }
+            }, 10000); // 10 seconds timeout
         };
         
         this.websocket.onmessage = (event) => {
             const message = JSON.parse(event.data);
+            // Clear the timeout since we received a message
+            if (this.wsTimeout) {
+                clearTimeout(this.wsTimeout);
+                this.wsTimeout = null;
+            }
+            
             // Ignore ping messages
             if (message.type !== 'ping') {
                 this.handleWebSocketMessage(message);
@@ -152,6 +179,7 @@ class ASCIIArtViewer {
     startPolling() {
         if (!this.currentSessionId || !this.isProcessing) return;
         
+        this.logToTerminal('Starting active polling for status updates', 'info');
         this.pollingInterval = setInterval(async () => {
             try {
                 const response = await fetch(`/api/session/${this.currentSessionId}`);
@@ -168,7 +196,7 @@ class ASCIIArtViewer {
                 } else {
                     // Update progress based on steps
                     const latestStep = sessionData.steps[sessionData.steps.length - 1];
-                    if (latestStep) {
+                    if (latestStep && latestStep.message) {
                         this.logToTerminal(latestStep.message, 'info');
                         this.updateProgressFromStatus(latestStep.status, latestStep.message);
                     }
@@ -177,6 +205,39 @@ class ASCIIArtViewer {
                 this.logToTerminal(`Polling error: ${error.message}`, 'error');
             }
         }, 2000); // Poll every 2 seconds
+    }
+    
+    startBackupPolling() {
+        if (!this.currentSessionId || !this.isProcessing || this.pollingInterval) return;
+        
+        this.backupPollingInterval = setInterval(async () => {
+            try {
+                const response = await fetch(`/api/session/${this.currentSessionId}`);
+                const sessionData = await response.json();
+                
+                // Only update if we haven't received WebSocket updates
+                if (sessionData.steps && sessionData.steps.length > 0) {
+                    const latestStep = sessionData.steps[sessionData.steps.length - 1];
+                    if (latestStep && !this.lastReportedStep || latestStep.timestamp !== this.lastReportedStep) {
+                        this.logToTerminal(`[BACKUP] ${latestStep.message}`, 'info');
+                        this.updateProgressFromStatus(latestStep.status, latestStep.message);
+                        this.lastReportedStep = latestStep.timestamp;
+                    }
+                }
+                
+                // Check completion
+                if (sessionData.status === 'completed' && sessionData.ascii_art) {
+                    this.displayResults(sessionData.ascii_art, sessionData.metadata);
+                    this.logToTerminal('Processing completed successfully!', 'success');
+                    this.stopProcessing();
+                } else if (sessionData.status === 'failed') {
+                    this.logToTerminal(`Processing failed: ${sessionData.error_message}`, 'error');
+                    this.stopProcessing();
+                }
+            } catch (error) {
+                // Silent backup polling errors
+            }
+        }, 3000); // Less frequent backup polling
     }
     
     updateProgressFromStatus(status, message) {
@@ -354,6 +415,16 @@ class ASCIIArtViewer {
         if (this.pollingInterval) {
             clearInterval(this.pollingInterval);
             this.pollingInterval = null;
+        }
+        
+        if (this.backupPollingInterval) {
+            clearInterval(this.backupPollingInterval);
+            this.backupPollingInterval = null;
+        }
+        
+        if (this.wsTimeout) {
+            clearTimeout(this.wsTimeout);
+            this.wsTimeout = null;
         }
     }
     
