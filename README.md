@@ -72,11 +72,22 @@ requests>=2.25.0
 python-multipart>=0.0.6
 ```
 
-## 🚀 Quick Start
+## � Installation & Setup
+
+### Option 1: Docker (Recommended)
+
+```bash
+# Quick start with Docker Compose
+docker-compose up --build
+
+# Access the application at: http://localhost:8000
+```
+
+### Option 2: Traditional Python Setup
 
 ```bash
 # 1. Install dependencies
-python -m venv venv
+python3 -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
@@ -87,6 +98,24 @@ pip install -r requirements.txt
 # 3. Open browser
 # Navigate to: http://localhost:8000
 ```
+
+### Docker Commands
+
+```bash
+# Development mode with hot reload
+docker-compose --profile dev up ascii-art-viewer-dev --build
+
+# Production mode
+docker-compose up --build
+
+# View logs
+docker-compose logs -f
+
+# Stop services
+docker-compose down
+```
+
+📋 **See [DOCKER.md](DOCKER.md) for detailed Docker setup and deployment instructions.**
 
 ## 🔗 API Endpoints
 
